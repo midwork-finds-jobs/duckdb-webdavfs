@@ -1,0 +1,147 @@
+# name: test/sql/webdav/webdav_comprehensive.test
+# description: Comprehensive test suite for WebDAV extension features
+# group: [webdav]
+
+require parquet
+
+require webdavfs
+
+# Test 1: Test WebDAV secret creation with all parameters
+statement ok
+CREATE SECRET webdav_test_full (
+    TYPE WEBDAV,
+    USERNAME 'testuser',
+    PASSWORD 'testpass',
+    SCOPE 'webdav://test.example.com/'
+);
+
+# Test 2: Test WebDAV secret creation for Hetzner Storage Box
+statement ok
+CREATE SECRET webdav_hetzner (
+    TYPE WEBDAV,
+    USERNAME 'u123456',
+    PASSWORD 'hetznerpass',
+    SCOPE 'storagebox://u123456'
+);
+
+# Test 3: Test WebDAV secret with wildcard scope
+statement ok
+CREATE SECRET webdav_wildcard (
+    TYPE WEBDAV,
+    USERNAME 'wildcarduser',
+    PASSWORD 'wildcardpass',
+    SCOPE 'webdav://*'
+);
+
+# Test 4: List secrets and verify they exist
+query I
+SELECT COUNT(*) >= 3 FROM duckdb_secrets() WHERE type = 'webdav';
+----
+true
+
+# Test 5: Verify secret scoping - check that secrets are registered
+query I
+SELECT name FROM duckdb_secrets() WHERE type = 'webdav' ORDER BY name;
+----
+webdav_hetzner
+webdav_test_full
+webdav_wildcard
+
+# Test 6: Test error handling for missing credentials (non-existent server)
+statement error
+SELECT * FROM 'webdav://this-definitely-does-not-exist-test-12345.invalid/file.txt';
+----
+Catalog
+
+# Test 7: Test error handling for non-existent file with proper server format
+statement error
+CREATE SECRET webdav_fake_file (
+    TYPE WEBDAV,
+    USERNAME 'user',
+    PASSWORD 'pass',
+    SCOPE 'webdav://localhost:9999/'
+);
+SELECT * FROM 'webdav://localhost:9999/nonexistent_file_12345.txt';
+----
+Catalog
+
+# Test 8: Test that storagebox:// URLs are properly recognized
+# (We can't test actual operations without a real server, but we can test that the URL format is accepted)
+statement error
+SELECT * FROM 'storagebox://u999999/test.parquet';
+----
+HTTP
+
+# Cleanup: Drop all test secrets
+statement ok
+DROP SECRET webdav_test_full;
+
+statement ok
+DROP SECRET webdav_hetzner;
+
+statement ok
+DROP SECRET webdav_wildcard;
+
+statement ok
+DROP SECRET IF EXISTS webdav_fake_file;
+
+# Test 9: Verify secrets are cleaned up
+query I
+SELECT COUNT(*) FROM duckdb_secrets() WHERE type = 'webdav';
+----
+0
+
+# Test 10: Test secret persistence scope options
+statement ok
+CREATE SECRET webdav_persistent (
+    TYPE WEBDAV,
+    USERNAME 'persistuser',
+    PASSWORD 'persistpass',
+    SCOPE 'webdav://persist.example.com/'
+);
+
+# Verify persistent secret exists
+query I
+SELECT COUNT(*) FROM duckdb_secrets() WHERE name = 'webdav_persistent';
+----
+1
+
+# Cleanup persistent secret
+statement ok
+DROP SECRET webdav_persistent;
+
+# Test 11: Test that multiple secrets with different scopes can coexist
+statement ok
+CREATE SECRET webdav_scope1 (
+    TYPE WEBDAV,
+    USERNAME 'user1',
+    PASSWORD 'pass1',
+    SCOPE 'webdav://server1.example.com/'
+);
+
+statement ok
+CREATE SECRET webdav_scope2 (
+    TYPE WEBDAV,
+    USERNAME 'user2',
+    PASSWORD 'pass2',
+    SCOPE 'webdav://server2.example.com/'
+);
+
+# Verify both secrets exist
+query I
+SELECT COUNT(*) FROM duckdb_secrets() WHERE type = 'webdav';
+----
+2
+
+# Cleanup
+statement ok
+DROP SECRET webdav_scope1;
+
+statement ok
+DROP SECRET webdav_scope2;
+
+# Test 12: Verify final cleanup
+query I
+SELECT COUNT(*) FROM duckdb_secrets() WHERE type = 'webdav';
+----
+0

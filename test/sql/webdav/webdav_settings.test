@@ -1,0 +1,121 @@
+# name: test/sql/webdav/webdav_settings.test
+# description: Test WebDAV configuration settings
+# group: [webdav]
+
+require webdavfs
+
+# Test 1: Verify default values for WebDAV settings
+query III
+SELECT
+    current_setting('webdav_debug_logging')::BOOLEAN as debug_logging,
+    current_setting('webdav_max_retries')::BIGINT as max_retries,
+    current_setting('webdav_streaming_threshold_mb')::BIGINT as streaming_threshold;
+----
+false	3	50
+
+# Test 2: Set webdav_debug_logging to true
+statement ok
+SET webdav_debug_logging = true;
+
+query I
+SELECT current_setting('webdav_debug_logging')::BOOLEAN;
+----
+true
+
+# Test 3: Set webdav_debug_logging back to false
+statement ok
+SET webdav_debug_logging = false;
+
+query I
+SELECT current_setting('webdav_debug_logging')::BOOLEAN;
+----
+false
+
+# Test 4: Set webdav_max_retries to custom value
+statement ok
+SET webdav_max_retries = 10;
+
+query I
+SELECT current_setting('webdav_max_retries')::BIGINT;
+----
+10
+
+# Test 5: Set webdav_max_retries to 0 (no retries)
+statement ok
+SET webdav_max_retries = 0;
+
+query I
+SELECT current_setting('webdav_max_retries')::BIGINT;
+----
+0
+
+# Test 6: Reset webdav_max_retries to default
+statement ok
+RESET webdav_max_retries;
+
+query I
+SELECT current_setting('webdav_max_retries')::BIGINT;
+----
+3
+
+# Test 7: Set webdav_streaming_threshold_mb to custom value
+statement ok
+SET webdav_streaming_threshold_mb = 100;
+
+query I
+SELECT current_setting('webdav_streaming_threshold_mb')::BIGINT;
+----
+100
+
+# Test 8: Set webdav_streaming_threshold_mb to 10MB (small threshold)
+statement ok
+SET webdav_streaming_threshold_mb = 10;
+
+query I
+SELECT current_setting('webdav_streaming_threshold_mb')::BIGINT;
+----
+10
+
+# Test 9: Reset webdav_streaming_threshold_mb to default
+statement ok
+RESET webdav_streaming_threshold_mb;
+
+query I
+SELECT current_setting('webdav_streaming_threshold_mb')::BIGINT;
+----
+50
+
+# Test 10: Set all settings at once
+statement ok
+SET webdav_debug_logging = true;
+SET webdav_max_retries = 5;
+SET webdav_streaming_threshold_mb = 200;
+
+query III
+SELECT
+    current_setting('webdav_debug_logging')::BOOLEAN as debug_logging,
+    current_setting('webdav_max_retries')::BIGINT as max_retries,
+    current_setting('webdav_streaming_threshold_mb')::BIGINT as streaming_threshold;
+----
+true	5	200
+
+# Test 11: Reset all settings to defaults
+statement ok
+RESET webdav_debug_logging;
+RESET webdav_max_retries;
+RESET webdav_streaming_threshold_mb;
+
+query III
+SELECT
+    current_setting('webdav_debug_logging')::BOOLEAN as debug_logging,
+    current_setting('webdav_max_retries')::BIGINT as max_retries,
+    current_setting('webdav_streaming_threshold_mb')::BIGINT as streaming_threshold;
+----
+false	3	50
+
+# Test 12: Verify settings can be queried from duckdb_settings() table
+query I
+SELECT COUNT(*) FROM duckdb_settings()
+WHERE name IN ('webdav_debug_logging', 'webdav_max_retries', 'webdav_streaming_threshold_mb');
+----
+3

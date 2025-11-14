@@ -1,0 +1,57 @@
+# name: test/sql/webdav/webdav_error_handling.test
+# description: Test WebDAV filesystem error handling and messages
+# group: [webdav]
+
+require parquet
+
+require webdavfs
+
+# Test 1: Verify extension is loaded
+query I
+SELECT COUNT(*) FROM duckdb_extensions() WHERE extension_name = 'webdavfs' AND loaded = true;
+----
+1
+
+# Test 2: Test with invalid credentials should give clear error
+statement error
+CREATE SECRET webdav_invalid (
+    TYPE WEBDAV,
+    USERNAME 'invalid_user',
+    PASSWORD 'invalid_pass',
+    SCOPE 'webdav://nonexistent.server.local/path'
+);
+SELECT * FROM read_csv_auto('webdav://nonexistent.server.local/path/file.csv');
+----
+Unable to connect
+
+# Test 3: Test with non-existent server should fail gracefully
+statement error
+CREATE SECRET webdav_fake (
+    TYPE WEBDAV,
+    USERNAME 'user',
+    PASSWORD 'pass',
+    SCOPE 'webdav://this-server-does-not-exist-12345.invalid/'
+);
+SELECT * FROM 'webdav://this-server-does-not-exist-12345.invalid/file.txt';
+----
+Catalog
+
+# Cleanup
+statement ok
+DROP SECRET IF EXISTS webdav_invalid;
+
+statement ok
+DROP SECRET IF EXISTS webdav_fake;
+
+# Note: To test HTTP 507 (Storage Full) error handling:
+# 1. Fill up a WebDAV server to capacity (e.g., 1TB Hetzner Storage Box)
+# 2. Set environment variables:
+#    - WEBDAV_FULL_STORAGE_TEST_AVAILABLE=1
+#    - WEBDAV_FULL_STORAGE_USERNAME=your_username
+#    - WEBDAV_FULL_STORAGE_PASSWORD=your_password
+#    - WEBDAV_FULL_STORAGE_URL=webdav://your-server/
+# 3. Run: test/sql/webdav/webdav_storage_full_test.test
+#
+# Expected error message:
+# "Storage is full. The WebDAV server has insufficient storage space available.
+#  Free up space or resize your storage."

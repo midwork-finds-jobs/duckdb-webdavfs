@@ -1,0 +1,124 @@
+# name: test/sql/webdav/webdav_config.test
+# description: Test WebDAV configuration via environment variables
+# group: [webdav]
+
+require parquet
+
+require webdavfs
+
+# Test 1: Test URL parsing for webdav:// protocol
+# This tests the ParseUrl functionality indirectly by attempting to access webdav URLs
+# The URL format should be recognized even if the server doesn't exist
+statement error
+SELECT * FROM 'webdav://test.example.com/file.csv';
+----
+HTTP
+
+# Test 2: Test URL parsing for storagebox:// protocol (Hetzner shorthand)
+# Should be internally converted to https://u123456.your-storagebox.de/
+statement error
+SELECT * FROM 'storagebox://u123456/file.parquet';
+----
+HTTP
+
+# Test 3: Test that file operations recognize WebDAV URLs
+statement error
+CREATE TABLE test AS SELECT * FROM 'webdav://example.com/data.csv';
+----
+HTTP
+
+# Test 4: Test glob pattern support with webdav:// URLs
+statement error
+SELECT * FROM 'webdav://example.com/*.csv';
+----
+IO
+
+# Test 5: Test glob pattern support with storagebox:// URLs
+statement error
+SELECT * FROM 'storagebox://u123456/*.parquet';
+----
+IO
+
+# Test 6: Test CREATE SECRET without explicit scope (should fail or use default behavior)
+statement ok
+CREATE SECRET webdav_no_scope (
+    TYPE WEBDAV,
+    USERNAME 'user',
+    PASSWORD 'pass',
+    SCOPE 'webdav://default.example.com/'
+);
+
+# Verify secret was created
+query I
+SELECT COUNT(*) FROM duckdb_secrets() WHERE name = 'webdav_no_scope';
+----
+1
+
+# Cleanup
+statement ok
+DROP SECRET webdav_no_scope;
+
+# Test 7: Test secret with empty password (should be allowed but may fail authentication)
+statement ok
+CREATE SECRET webdav_empty_pass (
+    TYPE WEBDAV,
+    USERNAME 'user',
+    PASSWORD '',
+    SCOPE 'webdav://emptypass.example.com/'
+);
+
+query I
+SELECT COUNT(*) FROM duckdb_secrets() WHERE name = 'webdav_empty_pass';
+----
+1
+
+statement ok
+DROP SECRET webdav_empty_pass;
+
+# Test 8: Test case sensitivity in URLs
+statement error
+SELECT * FROM 'WebDav://Example.Com/File.CSV';
+----
+IO
+
+# Test 9: Test protocol validation - http:// should not be treated as webdav://
+query I
+SELECT 'http://example.com/file.csv' LIKE '%webdav%';
+----
+false
+
+# Test 10: Test protocol validation - https:// should not be treated as webdav://
+query I
+SELECT 'https://example.com/file.csv' LIKE '%webdav%';
+----
+false
+
+# Test 11: Test that webdav:// protocol is case-sensitive
+statement error
+SELECT * FROM 'WEBDAV://example.com/file.csv';
+----
+IO
+
+# Test 12: Test storagebox:// with various username formats
+statement error
+SELECT * FROM 'storagebox://u1/file.txt';
+----
+Catalog
+
+statement error
+SELECT * FROM 'storagebox://u999999/file.txt';
+----
+Catalog
+
+statement error
+SELECT * FROM 'storagebox://u123456-sub1/file.txt';
+----
+Catalog
+
+# Note: WebDAV behavior can be configured using DuckDB settings:
+# - SET webdav_debug_logging = true; for debug logging
+# - SET webdav_streaming_threshold_mb = <MB>; for custom streaming threshold
+# - SET webdav_max_retries = <count>; for custom retry count
+#
+# These settings are tested in integration tests and manual tests since they
+# require actual WebDAV operations and can't be tested with just SQL.

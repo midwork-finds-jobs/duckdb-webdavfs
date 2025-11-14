@@ -1,0 +1,43 @@
+# Build directories
+build/
+.DS_Store
+
+# devenv
+.devenv/
+.devenv.flake.nix
+.direnv/
+
+# Pre-commit
+.pre-commit-config.yaml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# vcpkg
+vcpkg/
+vcpkg_installed/
+
+# Test outputs
+*.log
+test_results/
+
+# Test files with credentials (DO NOT COMMIT)
+test_hetzner.sql
+test_storagebox.sql
+test_cache.sql
+test_cache_v2.sql
+test_native_cache.sql
+test_create_remote_parquet.sql
+*_credentials.sql
+*.sql
+*.ducklake
+*.wal

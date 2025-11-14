@@ -1,0 +1,73 @@
+# name: test/sql/webdav/webdav_storage_full_test.test
+# description: Test WebDAV filesystem behavior when storage is full (HTTP 507)
+# group: [webdav]
+
+require webdavfs
+
+# This test requires a WebDAV server with full storage that returns HTTP 507
+# Set these environment variables to run this test:
+# - WEBDAV_FULL_STORAGE_TEST_AVAILABLE=1
+# - WEBDAV_FULL_STORAGE_USERNAME
+# - WEBDAV_FULL_STORAGE_PASSWORD
+# - WEBDAV_FULL_STORAGE_URL (should point to a server with insufficient storage)
+
+require-env WEBDAV_FULL_STORAGE_TEST_AVAILABLE 1
+
+require-env WEBDAV_FULL_STORAGE_USERNAME
+
+require-env WEBDAV_FULL_STORAGE_PASSWORD
+
+require-env WEBDAV_FULL_STORAGE_URL
+
+# Override default behaviour of skipping HTTP errors
+set ignore_error_messages
+
+# Test 1: Create a WebDAV secret for authentication
+statement ok
+CREATE SECRET webdav_full_test (
+    TYPE WEBDAV,
+    USERNAME '${WEBDAV_FULL_STORAGE_USERNAME}',
+    PASSWORD '${WEBDAV_FULL_STORAGE_PASSWORD}',
+    SCOPE '${WEBDAV_FULL_STORAGE_URL}'
+);
+
+# Test 2: Attempt to create a directory on full storage should fail with friendly error
+statement error
+CREATE TABLE test_data AS SELECT 1 as id, 'test' as name;
+----
+Storage is full
+
+# Test 3: Attempt to write a file to full storage should fail with friendly error
+statement error
+CREATE TABLE small_test AS SELECT i as id FROM range(1, 10) t(i);
+COPY small_test TO '${WEBDAV_FULL_STORAGE_URL}/test_file.parquet' (FORMAT PARQUET);
+----
+Storage is full
+
+# Test 4: Verify error message contains helpful guidance
+statement error
+CREATE TABLE another_test AS SELECT 'data' as value;
+COPY another_test TO '${WEBDAV_FULL_STORAGE_URL}/subdir/file.csv' (HEADER, DELIMITER ',');
+----
+Free up space or resize your storage
+
+# Test 5: Attempt to use DuckLake on full storage should fail gracefully
+statement error
+INSTALL ducklake;
+LOAD ducklake;
+ATTACH 'ducklake:full_test.ducklake' (DATA_PATH '${WEBDAV_FULL_STORAGE_URL}/ducklake_test/');
+----
+Storage is full
+
+# Cleanup
+statement ok
+DROP SECRET IF EXISTS webdav_full_test;
+
+statement ok
+DROP TABLE IF EXISTS test_data;
+
+statement ok
+DROP TABLE IF EXISTS small_test;
+
+statement ok
+DROP TABLE IF EXISTS another_test;

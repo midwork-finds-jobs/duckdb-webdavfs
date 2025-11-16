@@ -320,8 +320,10 @@ bool WebDAVFileSystem::IsWebDAVUrl(const string &url) {
 	if (StringUtil::StartsWith(url, "webdav://") || StringUtil::StartsWith(url, "webdavs://")) {
 		return true;
 	}
-	// Check for Hetzner Storage Box URLs (these use WebDAV)
-	if (url.find(".your-storagebox.de/") != string::npos) {
+	// Check for Hetzner Storage Box URLs via HTTPS (these use WebDAV)
+	// Only match HTTP/HTTPS URLs, not other protocols like ssh://
+	if ((StringUtil::StartsWith(url, "https://") || StringUtil::StartsWith(url, "http://")) &&
+	    url.find(".your-storagebox.de/") != string::npos) {
 		return true;
 	}
 	return false;

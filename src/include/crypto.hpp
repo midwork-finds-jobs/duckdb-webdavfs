@@ -24,7 +24,6 @@ void hmac256(std::string message, hash_bytes secret, hash_bytes &out);
 void hex256(hash_bytes &in, hash_str &out);
 
 class DUCKDB_EXTENSION_API AESStateSSL : public EncryptionState {
-
 public:
 	explicit AESStateSSL(unique_ptr<EncryptionStateMetadata> metadata);
 	~AESStateSSL() override;

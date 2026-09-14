@@ -32,11 +32,8 @@ static void LoadInternal(ExtensionLoader &loader) {
 	// Set up HTTP utility (CURL-based)
 	// Always use HTTPFSCurlUtil for WebDAV since we need custom HTTP methods
 	// Note: HTTPFSCurlUtil::GetName() returns "HTTPFS-Curl", not "HTTPFSCurlUtil"
-	if (!config.http_util || config.http_util->GetName() != "HTTPFS-Curl") {
-		fprintf(stderr, "[WebDAV Extension] Setting http_util to HTTPFSCurlUtil (was: %s)\n",
-		        config.http_util ? config.http_util->GetName().c_str() : "null");
-		fflush(stderr);
-		config.http_util = make_shared_ptr<HTTPFSCurlUtil>();
+	if (config.GetHTTPUtil().GetName() != "HTTPFS-Curl") {
+		config.SetHTTPUtil(make_shared_ptr<HTTPFSCurlUtil>());
 	}
 
 	auto &fs = instance.GetFileSystem();

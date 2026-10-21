@@ -534,6 +534,26 @@ public:
 		return TransformResponseCurl(res);
 	}
 
+	unique_ptr<HTTPResponse> Options(OptionsRequestInfo &info) override {
+		auto curl_headers = TransformHeadersCurl(info.headers);
+		request_info->url = info.url;
+		if (!info.params.extra_headers.empty()) {
+			auto curl_params = TransformParamsCurl(info.params);
+			request_info->url += "?" + curl_params;
+		}
+
+		CURLcode res;
+		{
+			curl_easy_setopt(*curl, CURLOPT_URL, request_info->url.c_str());
+			curl_easy_setopt(*curl, CURLOPT_CUSTOMREQUEST, "OPTIONS");
+			curl_easy_setopt(*curl, CURLOPT_FOLLOWLOCATION, 1L);
+			curl_easy_setopt(*curl, CURLOPT_HTTPHEADER, curl_headers ? curl_headers.headers : nullptr);
+			res = ExecuteWithRetry();
+		}
+
+		return TransformResponseCurl(res);
+	}
+
 	unique_ptr<HTTPResponse> Post(PostRequestInfo &info) override {
 		WEBDAV_DEBUG_LOG("[CURL] Post() called: url=%s\n", info.url.c_str());
 		if (state) {

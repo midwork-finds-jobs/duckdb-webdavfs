@@ -15,14 +15,4 @@ void hmac256(std::string message, hash_bytes secret, hash_bytes &out) {
 	hmac256(message, (char *)secret, sizeof(hash_bytes), out);
 }
 
-void hex256(hash_bytes &in, hash_str &out) {
-	const char *hex = "0123456789abcdef";
-	unsigned char *pin = in;
-	unsigned char *pout = out;
-	for (; pin < in + sizeof(in); pout += 2, pin++) {
-		pout[0] = hex[(*pin >> 4) & 0xF];
-		pout[1] = hex[*pin & 0xF];
-	}
-}
-
 } // namespace duckdb

@@ -1054,7 +1054,6 @@ static vector<OpenFileInfo> ParsePropfindResponse(const string &xml_response, co
 	size_t pos = 0;
 	while ((pos = xml_response.find("<D:href>", pos)) != string::npos ||
 	       (pos = xml_response.find("<href>", pos)) != string::npos) {
-
 		string tag_open = xml_response.substr(pos, 8) == "<D:href>" ? "<D:href>" : "<href>";
 		string tag_close = tag_open == "<D:href>" ? "</D:href>" : "</href>";
 
@@ -1098,7 +1097,6 @@ static vector<OpenFileInfo> ParsePropfindResponse(const string &xml_response, co
 // Pattern matching helper (similar to S3)
 static bool Match(vector<string>::const_iterator key, vector<string>::const_iterator key_end,
                   vector<string>::const_iterator pattern, vector<string>::const_iterator pattern_end) {
-
 	while (key != key_end && pattern != pattern_end) {
 		if (*pattern == "**") {
 			if (std::next(pattern) == pattern_end) {
@@ -1214,7 +1212,6 @@ vector<OpenFileInfo> WebDAVFileSystem::Glob(const string &glob_pattern, FileOpen
 	size_t pos = 0;
 	while ((pos = response_body.find("<D:href>", pos)) != string::npos ||
 	       (pos = response_body.find("<href>", pos)) != string::npos) {
-
 		string tag_open = response_body.substr(pos, 8) == "<D:href>" ? "<D:href>" : "<href>";
 		string tag_close = tag_open == "<D:href>" ? "</D:href>" : "</href>";
 

@@ -8,3 +8,5 @@ duckdb_extension_load(webdavfs
 
 # Any extra extensions that should be built
 # e.g.: duckdb_extension_load(json)
+# Link into unittest/shell so tests can `require webdavfs` (DuckDB v2 no longer links by default)
+duckdb_extension_statically_link(webdavfs)
